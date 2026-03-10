@@ -1,9 +1,9 @@
 # Python
 __pycache__/
-.py[cod]
+*.py[cod]
 venv/
 .env
 config.py
 
 # macOS
-.DS_Storeconfig.py
+.DS_Store

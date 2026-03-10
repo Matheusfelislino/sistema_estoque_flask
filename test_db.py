@@ -1,10 +1,9 @@
-import mysql.connector
-from config import DB_CONFIG
+from api.database.connection import get_db_connection
 
 try:
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = get_db_connection()
     if conn.is_connected():
-        print("Sucesso! Conetado ao banco estoque_db no MYSQL.")
+        print("Sucesso! Conectado ao banco estoque_db no MYSQL.")
 
         cursor = conn.cursor()
         cursor.execute("SELECT DATABASE();")
@@ -14,4 +13,4 @@ try:
         cursor.close()
         conn.close()
 except Exception as e:
-    print(f"Erro ao conectar; {e}")
+    print(f"Erro ao conectar: {e}")
