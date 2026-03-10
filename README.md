@@ -27,35 +27,104 @@ graph TD;
 
 ---
 
-## Por dentro do Código (Explicação Técnica)
+## Como Rodar o Projeto
 
-Aqui destaco as partes mais importantes da lógica desenvolvida:
+### Pré-requisitos
+- Python 3.8+
+- MySQL rodando localmente (ou em servidor)
 
-### 1. Conexão Modularizada (`config.py`)
-Para evitar hardcode de senhas no arquivo principal e facilitar a manutenção, separei as credenciais do banco.
-> **Por que isso é importante?** Em um ambiente real, isso permite que mudemos o banco de desenvolvimento para o de produção sem tocar no código da aplicação.
+### 1. Clone o repositório e instale as dependências
 
-### 2. Tratamento de Dados no Cadastro (POST)
-No endpoint de criação de produtos, utilizei o método `.get()` do Python para evitar erros caso o cliente esqueça de enviar campos opcionais.
-```python
-# Exemplo do código:
-valores = (
-    novo_produto['nome'],          # Obrigatório
-    novo_produto.get('marca', ''), # Opcional (se não vier, fica vazio)
-    novo_produto['preco'],         # Obrigatório
-    novo_produto.get('quantidade', 0) # Opcional (padrão é 0)
+```bash
+git clone https://github.com/Matheusfelislino/sistema_estoque_flask.git
+cd sistema_estoque_flask
+pip install -r requirements.txt
 ```
 
-## Endpoints da API
+### 2. Configure as variáveis de ambiente
 
-Aqui estão as rotas disponíveis para teste (via Postman, Insomnia ou Curl).
+```bash
+cp .env.example .env
+```
+
+Abra o arquivo `.env` e preencha com suas credenciais:
+
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=sua_senha
+DB_NAME=estoque_db
+FLASK_DEBUG=false
+```
+
+### 3. Crie o banco de dados
+
+Execute o script SQL no seu MySQL:
+
+```bash
+mysql -u root -p < schema.sql
+```
+
+### 4. Inicie a API
+
+```bash
+python run.py
+```
+
+A API estará disponível em `http://localhost:5000`.
+
+---
+
+## Estrutura do Projeto
+
+```
+sistema_estoque_flask/
+├── api/
+│   ├── database/
+│   │   └── connection.py   # Conexão com o banco de dados
+│   ├── models/
+│   │   └── produto.py      # Funções de acesso ao banco (CRUD)
+│   └── routes/
+│       └── produtos.py     # Endpoints da API
+├── run.py                  # Ponto de entrada da aplicação
+├── app.py                  # Inicialização do Flask (fábrica)
+├── schema.sql              # Script de criação do banco de dados
+├── .env.example            # Modelo de variáveis de ambiente
+└── requirements.txt        # Dependências do projeto
+```
+
+---
+
+## Endpoints da API
 
 | Método | Rota | Descrição | Exemplo de Body (JSON) |
 | :--- | :--- | :--- | :--- |
 | **GET** | `/produtos` | Lista todos os produtos | *Nenhum* |
+| **GET** | `/produtos/<id>` | Busca um produto pelo ID | *Nenhum* |
 | **POST** | `/produtos` | Cadastra um novo produto | `{"nome": "Mouse", "preco": 50.00}` |
 | **PUT** | `/produtos/<id>` | Atualiza estoque e preço | `{"quantidade": 20, "preco": 45.00}` |
 | **DELETE**| `/produtos/<id>` | Remove um produto | *Nenhum* |
 
+### Formato de Resposta
+
+Todas as respostas seguem o padrão:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "..."
+}
+```
+
+Em caso de erro:
+
+```json
+{
+  "success": false,
+  "error": "Descrição do erro"
+}
+```
+
 ---
-Desenvolvido por **Matheus** 
+Desenvolvido por **Matheus**
