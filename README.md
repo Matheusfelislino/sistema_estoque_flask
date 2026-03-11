@@ -27,35 +27,145 @@ graph TD;
 
 ---
 
-## Por dentro do Código (Explicação Técnica)
+## Como Rodar o Projeto
 
-Aqui destaco as partes mais importantes da lógica desenvolvida:
+### Pré-requisitos
+- Python 3.8+
+- MySQL rodando localmente (ou em servidor)
 
-### 1. Conexão Modularizada (`config.py`)
-Para evitar hardcode de senhas no arquivo principal e facilitar a manutenção, separei as credenciais do banco.
-> **Por que isso é importante?** Em um ambiente real, isso permite que mudemos o banco de desenvolvimento para o de produção sem tocar no código da aplicação.
+### 1. Clone o repositório e instale as dependências
 
-### 2. Tratamento de Dados no Cadastro (POST)
-No endpoint de criação de produtos, utilizei o método `.get()` do Python para evitar erros caso o cliente esqueça de enviar campos opcionais.
-```python
-# Exemplo do código:
-valores = (
-    novo_produto['nome'],          # Obrigatório
-    novo_produto.get('marca', ''), # Opcional (se não vier, fica vazio)
-    novo_produto['preco'],         # Obrigatório
-    novo_produto.get('quantidade', 0) # Opcional (padrão é 0)
+```bash
+git clone https://github.com/Matheusfelislino/sistema_estoque_flask.git
+cd sistema_estoque_flask
+pip install -r requirements.txt
 ```
+
+### 2. Configure as variáveis de ambiente
+
+```bash
+cp .env.example .env
+```
+
+Abra o arquivo `.env` e preencha com suas credenciais:
+
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=sua_senha
+DB_NAME=estoque_db
+FLASK_DEBUG=false
+```
+
+### 3. Crie o banco de dados
+
+Execute o script SQL no seu MySQL:
+
+```bash
+mysql -u root -p < schema.sql
+```
+
+### 4. Inicie a API
+
+```bash
+python run.py
+```
+
+A API estará disponível em `http://localhost:5001`.
+
+---
+
+## Rodando os Testes
+
+Os testes utilizam **pytest** e não exigem conexão real com o banco de dados (a camada de model é mockada).
+
+```bash
+pytest
+```
+
+Para rodar com saída detalhada:
+
+```bash
+pytest -v
+```
+
+---
+
+## Estrutura do Projeto
+
+```
+sistema_estoque_flask/
+├── api/
+│   ├── database/
+│   │   └── connection.py       # Conexão com o banco de dados
+│   ├── models/
+│   │   └── produto.py          # Funções de acesso ao banco (CRUD)
+│   ├── routes/
+│   │   └── produtos.py         # Endpoints da API
+│   └── validators/
+│       └── produto_validator.py # Validações de entrada
+├── tests/
+│   ├── conftest.py             # Fixtures compartilhadas do pytest
+│   └── test_produtos.py        # Testes automatizados dos endpoints
+├── run.py                      # Ponto de entrada da aplicação
+├── schema.sql                  # Script de criação do banco de dados
+├── .env.example                # Modelo de variáveis de ambiente
+├── pytest.ini                  # Configuração do pytest
+└── requirements.txt            # Dependências do projeto
+```
+
+---
 
 ## Endpoints da API
 
-Aqui estão as rotas disponíveis para teste (via Postman, Insomnia ou Curl).
-
 | Método | Rota | Descrição | Exemplo de Body (JSON) |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/produtos` | Lista todos os produtos | *Nenhum* |
+| **GET** | `/produtos` | Lista todos os produtos (aceita filtros) | *Nenhum* |
+| **GET** | `/produtos/<id>` | Busca um produto pelo ID | *Nenhum* |
 | **POST** | `/produtos` | Cadastra um novo produto | `{"nome": "Mouse", "preco": 50.00}` |
-| **PUT** | `/produtos/<id>` | Atualiza estoque e preço | `{"quantidade": 20, "preco": 45.00}` |
+| **PUT** | `/produtos/<id>` | Substituição completa (quantidade + preço) | `{"quantidade": 20, "preco": 45.00}` |
+| **PATCH** | `/produtos/<id>` | Atualização parcial de qualquer campo | `{"preco": 45.00}` |
 | **DELETE**| `/produtos/<id>` | Remove um produto | *Nenhum* |
 
+### Filtros disponíveis em GET /produtos
+
+| Query param | Exemplo | Descrição |
+| :--- | :--- | :--- |
+| `nome` | `/produtos?nome=Mouse` | Busca parcial pelo nome |
+| `marca` | `/produtos?marca=Logitech` | Busca parcial pela marca |
+| `estoque_baixo` | `/produtos?estoque_baixo=true` | Retorna apenas produtos com quantidade = 0 |
+
+### Formato de Resposta
+
+Todas as respostas seguem o padrão:
+
+**Sucesso:**
+```json
+{
+  "success": true,
+  "message": "Descrição da operação",
+  "data": { ... }
+}
+```
+
+**Erro:**
+```json
+{
+  "success": false,
+  "message": "Descrição do erro",
+  "data": null,
+  "errors": ["Detalhe do erro 1", "Detalhe do erro 2"]
+}
+```
+
 ---
-Desenvolvido por **Matheus** 
+
+## Melhorias Futuras
+
+- [ ] Autenticação via JWT
+- [ ] Paginação na listagem de produtos
+- [ ] Documentação interativa via Swagger/Flasgger
+- [ ] Deploy em Render ou Railway
+
+---
+Desenvolvido por **Matheus**
