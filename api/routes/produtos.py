@@ -1,3 +1,6 @@
+import logging
+
+import mysql.connector
 from flask import Blueprint, jsonify, request
 
 from api.models.produto import (
@@ -5,68 +8,107 @@ from api.models.produto import (
     delete_produto,
     get_all_produtos,
     get_produto_by_id,
+    patch_produto,
     update_produto,
+)
+from api.validators.produto_validator import (
+    validate_create,
+    validate_patch,
+    validate_update,
 )
 
 produtos_bp = Blueprint("produtos", __name__)
+logger = logging.getLogger(__name__)
+
+
+def _error_response(message: str, errors: list, status: int):
+    """Helper que monta uma resposta de erro padronizada."""
+    return (
+        jsonify({"success": False, "message": message, "data": None, "errors": errors}),
+        status,
+    )
+
+
+def _require_json():
+    """Retorna uma resposta de erro se o Content-Type não for application/json."""
+    if not request.is_json:
+        return _error_response(
+            "Content-Type deve ser application/json",
+            ["Header 'Content-Type: application/json' não encontrado"],
+            415,
+        )
+    return None
 
 
 @produtos_bp.route("/produtos", methods=["GET"])
 def listar_produtos():
-    """Lista todos os produtos do estoque."""
-    produtos = get_all_produtos()
-    return jsonify({"success": True, "data": produtos}), 200
+    """Lista todos os produtos do estoque, com filtros opcionais."""
+    nome = request.args.get("nome")
+    marca = request.args.get("marca")
+    estoque_baixo_str = request.args.get("estoque_baixo", "false").lower()
+    estoque_baixo = estoque_baixo_str == "true"
+
+    try:
+        produtos = get_all_produtos(nome=nome, marca=marca, estoque_baixo=estoque_baixo)
+    except mysql.connector.Error:
+        return _error_response("Erro interno ao consultar produtos", [], 500)
+
+    return (
+        jsonify({"success": True, "message": "Produtos listados com sucesso", "data": produtos}),
+        200,
+    )
 
 
 @produtos_bp.route("/produtos/<int:produto_id>", methods=["GET"])
 def buscar_produto(produto_id):
     """Busca um produto específico pelo ID."""
-    produto = get_produto_by_id(produto_id)
+    try:
+        produto = get_produto_by_id(produto_id)
+    except mysql.connector.Error:
+        return _error_response("Erro interno ao buscar produto", [], 500)
+
     if produto is None:
-        return jsonify({"success": False, "error": "Produto não encontrado"}), 404
-    return jsonify({"success": True, "data": produto}), 200
+        return _error_response(
+            "Produto não encontrado",
+            [f"Nenhum produto com id={produto_id}"],
+            404,
+        )
+    return (
+        jsonify({"success": True, "message": "Produto encontrado", "data": produto}),
+        200,
+    )
 
 
 @produtos_bp.route("/produtos", methods=["POST"])
 def criar_produto():
     """Cria um novo produto no estoque."""
-    dados = request.get_json()
+    content_type_error = _require_json()
+    if content_type_error:
+        return content_type_error
 
-    if not dados:
-        return jsonify({"success": False, "error": "Dados inválidos"}), 400
+    dados = request.get_json(silent=True)
+    if dados is None:
+        return _error_response("Body JSON inválido ou ausente", ["Não foi possível parsear o JSON"], 400)
 
-    if "nome" not in dados:
-        return jsonify({"success": False, "error": "Campo 'nome' é obrigatório"}), 400
+    errors = validate_create(dados)
+    if errors:
+        return _error_response("Dados inválidos", errors, 400)
 
-    if "preco" not in dados:
-        return jsonify({"success": False, "error": "Campo 'preco' é obrigatório"}), 400
+    nome = dados["nome"].strip()
+    marca = dados.get("marca", "") or ""
+    preco = float(dados["preco"])
+    quantidade = int(dados.get("quantidade", 0))
 
     try:
-        preco = float(dados["preco"])
-        if preco < 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        return jsonify({"success": False, "error": "Preço inválido"}), 400
-
-    try:
-        quantidade = int(dados.get("quantidade", 0))
-        if quantidade < 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        return jsonify({"success": False, "error": "Quantidade inválida"}), 400
-
-    novo_id = create_produto(
-        nome=dados["nome"],
-        marca=dados.get("marca", ""),
-        preco=preco,
-        quantidade=quantidade,
-    )
+        novo_id = create_produto(nome=nome, marca=marca, preco=preco, quantidade=quantidade)
+    except mysql.connector.Error:
+        return _error_response("Erro interno ao criar produto", [], 500)
 
     return (
         jsonify(
             {
                 "success": True,
-                "message": "Produto criado com sucesso!",
+                "message": "Produto criado com sucesso",
                 "data": {"id": novo_id},
             }
         ),
@@ -76,49 +118,96 @@ def criar_produto():
 
 @produtos_bp.route("/produtos/<int:produto_id>", methods=["PUT"])
 def atualizar_produto(produto_id):
-    """Atualiza quantidade e preço de um produto."""
-    dados = request.get_json()
+    """Substitui completamente quantidade e preço de um produto (atualização completa)."""
+    content_type_error = _require_json()
+    if content_type_error:
+        return content_type_error
 
-    if not dados:
-        return jsonify({"success": False, "error": "Dados inválidos"}), 400
+    dados = request.get_json(silent=True)
+    if dados is None:
+        return _error_response("Body JSON inválido ou ausente", ["Não foi possível parsear o JSON"], 400)
 
-    if "quantidade" not in dados:
-        return (
-            jsonify({"success": False, "error": "Campo 'quantidade' é obrigatório"}),
-            400,
-        )
+    errors = validate_update(dados)
+    if errors:
+        return _error_response("Dados inválidos", errors, 400)
 
-    if "preco" not in dados:
-        return jsonify({"success": False, "error": "Campo 'preco' é obrigatório"}), 400
-
-    try:
-        preco = float(dados["preco"])
-        if preco < 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        return jsonify({"success": False, "error": "Preço inválido"}), 400
+    quantidade = int(dados["quantidade"])
+    preco = float(dados["preco"])
 
     try:
-        quantidade = int(dados["quantidade"])
-        if quantidade < 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        return jsonify({"success": False, "error": "Quantidade inválida"}), 400
-
-    rows = update_produto(produto_id, quantidade, preco)
+        rows = update_produto(produto_id, quantidade, preco)
+    except mysql.connector.Error:
+        return _error_response("Erro interno ao atualizar produto", [], 500)
 
     if rows == 0:
-        return jsonify({"success": False, "error": "Produto não encontrado"}), 404
+        return _error_response(
+            "Produto não encontrado",
+            [f"Nenhum produto com id={produto_id}"],
+            404,
+        )
 
-    return jsonify({"success": True, "message": "Estoque atualizado com sucesso!"}), 200
+    return (
+        jsonify({"success": True, "message": "Produto atualizado com sucesso", "data": None}),
+        200,
+    )
+
+
+@produtos_bp.route("/produtos/<int:produto_id>", methods=["PATCH"])
+def atualizar_produto_parcial(produto_id):
+    """Atualiza parcialmente um ou mais campos de um produto."""
+    content_type_error = _require_json()
+    if content_type_error:
+        return content_type_error
+
+    dados = request.get_json(silent=True)
+    if dados is None:
+        return _error_response("Body JSON inválido ou ausente", ["Não foi possível parsear o JSON"], 400)
+
+    errors = validate_patch(dados)
+    if errors:
+        return _error_response("Dados inválidos", errors, 400)
+
+    fields: dict = {}
+    if "nome" in dados:
+        fields["nome"] = dados["nome"].strip()
+    if "marca" in dados:
+        fields["marca"] = dados["marca"]
+    if "preco" in dados:
+        fields["preco"] = float(dados["preco"])
+    if "quantidade" in dados:
+        fields["quantidade"] = int(dados["quantidade"])
+
+    try:
+        rows = patch_produto(produto_id, fields)
+    except mysql.connector.Error:
+        return _error_response("Erro interno ao atualizar produto", [], 500)
+
+    if rows == 0:
+        return _error_response(
+            "Produto não encontrado",
+            [f"Nenhum produto com id={produto_id}"],
+            404,
+        )
+
+    return (
+        jsonify({"success": True, "message": "Produto atualizado parcialmente com sucesso", "data": None}),
+        200,
+    )
 
 
 @produtos_bp.route("/produtos/<int:produto_id>", methods=["DELETE"])
 def deletar_produto(produto_id):
     """Remove um produto do estoque."""
-    rows = delete_produto(produto_id)
+    try:
+        rows = delete_produto(produto_id)
+    except mysql.connector.Error:
+        return _error_response("Erro interno ao deletar produto", [], 500)
 
     if rows == 0:
-        return jsonify({"success": False, "error": "Produto não encontrado"}), 404
+        return _error_response(
+            "Produto não encontrado",
+            [f"Nenhum produto com id={produto_id}"],
+            404,
+        )
 
     return "", 204

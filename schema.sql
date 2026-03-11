@@ -10,5 +10,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     quantidade INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_nome (nome)
+    INDEX idx_nome (nome),
+    INDEX idx_marca (marca),
+    CONSTRAINT chk_quantidade CHECK (quantidade >= 0)
 );

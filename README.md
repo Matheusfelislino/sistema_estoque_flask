@@ -75,22 +75,43 @@ A API estará disponível em `http://localhost:5001`.
 
 ---
 
+## Rodando os Testes
+
+Os testes utilizam **pytest** e não exigem conexão real com o banco de dados (a camada de model é mockada).
+
+```bash
+pytest
+```
+
+Para rodar com saída detalhada:
+
+```bash
+pytest -v
+```
+
+---
+
 ## Estrutura do Projeto
 
 ```
 sistema_estoque_flask/
 ├── api/
 │   ├── database/
-│   │   └── connection.py   # Conexão com o banco de dados
+│   │   └── connection.py       # Conexão com o banco de dados
 │   ├── models/
-│   │   └── produto.py      # Funções de acesso ao banco (CRUD)
-│   └── routes/
-│       └── produtos.py     # Endpoints da API
-├── run.py                  # Ponto de entrada da aplicação
-├── app.py                  # Inicialização do Flask (fábrica)
-├── schema.sql              # Script de criação do banco de dados
-├── .env.example            # Modelo de variáveis de ambiente
-└── requirements.txt        # Dependências do projeto
+│   │   └── produto.py          # Funções de acesso ao banco (CRUD)
+│   ├── routes/
+│   │   └── produtos.py         # Endpoints da API
+│   └── validators/
+│       └── produto_validator.py # Validações de entrada
+├── tests/
+│   ├── conftest.py             # Fixtures compartilhadas do pytest
+│   └── test_produtos.py        # Testes automatizados dos endpoints
+├── run.py                      # Ponto de entrada da aplicação
+├── schema.sql                  # Script de criação do banco de dados
+├── .env.example                # Modelo de variáveis de ambiente
+├── pytest.ini                  # Configuração do pytest
+└── requirements.txt            # Dependências do projeto
 ```
 
 ---
@@ -99,32 +120,52 @@ sistema_estoque_flask/
 
 | Método | Rota | Descrição | Exemplo de Body (JSON) |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/produtos` | Lista todos os produtos | *Nenhum* |
+| **GET** | `/produtos` | Lista todos os produtos (aceita filtros) | *Nenhum* |
 | **GET** | `/produtos/<id>` | Busca um produto pelo ID | *Nenhum* |
 | **POST** | `/produtos` | Cadastra um novo produto | `{"nome": "Mouse", "preco": 50.00}` |
-| **PUT** | `/produtos/<id>` | Atualiza estoque e preço | `{"quantidade": 20, "preco": 45.00}` |
+| **PUT** | `/produtos/<id>` | Substituição completa (quantidade + preço) | `{"quantidade": 20, "preco": 45.00}` |
+| **PATCH** | `/produtos/<id>` | Atualização parcial de qualquer campo | `{"preco": 45.00}` |
 | **DELETE**| `/produtos/<id>` | Remove um produto | *Nenhum* |
+
+### Filtros disponíveis em GET /produtos
+
+| Query param | Exemplo | Descrição |
+| :--- | :--- | :--- |
+| `nome` | `/produtos?nome=Mouse` | Busca parcial pelo nome |
+| `marca` | `/produtos?marca=Logitech` | Busca parcial pela marca |
+| `estoque_baixo` | `/produtos?estoque_baixo=true` | Retorna apenas produtos com quantidade = 0 |
 
 ### Formato de Resposta
 
 Todas as respostas seguem o padrão:
 
+**Sucesso:**
 ```json
 {
   "success": true,
-  "data": { ... },
-  "message": "..."
+  "message": "Descrição da operação",
+  "data": { ... }
 }
 ```
 
-Em caso de erro:
-
+**Erro:**
 ```json
 {
   "success": false,
-  "error": "Descrição do erro"
+  "message": "Descrição do erro",
+  "data": null,
+  "errors": ["Detalhe do erro 1", "Detalhe do erro 2"]
 }
 ```
+
+---
+
+## Melhorias Futuras
+
+- [ ] Autenticação via JWT
+- [ ] Paginação na listagem de produtos
+- [ ] Documentação interativa via Swagger/Flasgger
+- [ ] Deploy em Render ou Railway
 
 ---
 Desenvolvido por **Matheus**
