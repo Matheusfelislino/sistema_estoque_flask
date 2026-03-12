@@ -32,11 +32,11 @@ Algumas melhorias planejadas incluem:
 O sistema segue a arquitetura cliente-servidor, onde o Flask atua como o intermediário que recebe as requisições HTTP, processa as regras de negócio e conversa com o banco de dados.
 
 ```mermaid
-graph TD;
-    A[Cliente (Insomnia/Curl)] -->|Requisição HTTP| B(Flask API);
-    B -->|SQL Query| C[(MySQL Database)];
-    C -->|Dados| B;
-    B -->|JSON Response| A;
+graph TD
+    A[Cliente] -->|Requisição HTTP| B[Flask API]
+    B -->|Consulta SQL| C[(Banco MySQL)]
+    C -->|Retorno dos dados| B
+    B -->|Resposta JSON| A
 ```
 
 ---
