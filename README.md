@@ -13,6 +13,20 @@ Diferente de projetos básicos que usam listas em memória, este sistema **persi
 
 ---
 
+## Status do projeto
+
+Este projeto está em evolução e novas melhorias estão sendo
+implementadas continuamente para aprimorar a arquitetura,
+validação de dados e cobertura de testes.
+
+Algumas melhorias planejadas incluem:
+- implementação de atualização parcial com PATCH
+- melhoria na padronização das respostas da API
+- aumento da cobertura de testes automatizados
+- melhorias na organização da validação de dados
+
+---
+
 ## Arquitetura e Fluxo
 
 O sistema segue a arquitetura cliente-servidor, onde o Flask atua como o intermediário que recebe as requisições HTTP, processa as regras de negócio e conversa com o banco de dados.
@@ -127,4 +141,19 @@ Em caso de erro:
 ```
 
 ---
-Desenvolvido por **Matheus**
+
+## Melhorias futuras
+
+Algumas melhorias planejadas para evolução do projeto:
+
+- implementar endpoint PATCH para atualização parcial
+- melhorar validação de dados utilizando módulo dedicado
+- aumentar cobertura de testes com pytest
+- adicionar filtros na listagem de produtos
+- melhorar tratamento de erros da aplicação
+- adicionar documentação da API com Swagger
+- realizar deploy da aplicação
+
+---
+
+Desenvolvido por **Matheus Felis**

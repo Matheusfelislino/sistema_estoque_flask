@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 
 
 def create_app():
@@ -10,9 +10,15 @@ def create_app():
 
     @app.route("/")
     def home():
-        return (
-            "<h1>API de Estoque Rodando!</h1>"
-            "<p>Acesse <a href='/produtos'>/produtos</a> para ver a lista.</p>"
-        )
+        return jsonify(
+            {
+                "success": True,
+                "message": "API de Estoque rodando com sucesso.",
+                "endpoints": {
+                    "listar_produtos": "/produtos",
+                    "buscar_produto": "/produtos/<id>",
+                },
+            }
+        ), 200
 
     return app
